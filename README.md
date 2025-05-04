@@ -1,103 +1,143 @@
-# JetEngine Smart Slider 3 Pro Generator
+# JetEngine Advanced Smart Slider 3 Generator
 
-Ein WordPress-Plugin zur Integration von JetEngine Custom Post Types in Smart Slider 3 Pro.
-
-## Beschreibung
-
-Dieses Plugin ermöglicht es, JetEngine Custom Post Types (CPTs) direkt in Smart Slider 3 Pro zu verwenden. Es fügt einen neuen Generator zur Auswahl hinzu, mit dem du dynamische Slides aus deinen JetEngine CPTs erstellen kannst.
+Eine fortschrittliche Integration zwischen JetEngine und Smart Slider 3 Pro, die die volle Leistungsfähigkeit der dynamischen Inhalte von JetEngine nutzt.
 
 ## Funktionen
 
-- Automatische Erkennung und Integration von JetEngine Custom Post Types
-- Unterstützung für Meta-Felder und Taxonomien
-- Flexible Filterung nach Status, Taxonomien und Meta-Feldern
-- Umfangreiche Sortierungsoptionen
-- Vollständige Integration in die Smart Slider 3 Pro Benutzeroberfläche
+- **Vollständige JetEngine-Integration**: Generiere dynamische Slides aus jedem JetEngine Custom Post Type, Custom Content Type oder jeder Relation
+- **Erweiterte Meta-Feld-Unterstützung**: Nutze alle JetEngine-Meta-Feldtypen, einschließlich Galerien, Repeater, Maps und mehr
+- **Dynamische Bildquellen**: Mehrere Optionen für Bildquellen, einschließlich Beitragsbilder, Meta-Felder, Galerie-Felder und Inhaltsbilder
+- **Intelligente Taxonomie-Verarbeitung**: Filtere Beiträge nach Taxonomien mit erweiterten Beziehungsoptionen (UND/ODER)
+- **Flexible Sortierung**: Sortiere Inhalte nach verschiedenen Kriterien, einschließlich Meta-Feldern
+- **Umfangreiche Variablen**: Greife auf alle JetEngine-Daten in deinen Smart Slider-Slides mit korrekt formatierten Variablen zu
+
+## Anforderungen
+
+- WordPress 5.6 oder höher
+- JetEngine 2.8.0 oder höher
+- Smart Slider 3 Pro 3.5.0 oder höher
 
 ## Installation
 
-1. Lade das Plugin als ZIP-Datei herunter
-2. Gehe in deinem WordPress-Dashboard zu Plugins > Neu hinzufügen > Plugin hochladen
-3. Wähle die ZIP-Datei aus und klicke auf "Jetzt installieren"
-4. Aktiviere das Plugin
-
-## Voraussetzungen
-
-- WordPress 5.0 oder höher
-- JetEngine Plugin (aktiviert und konfiguriert)
-- Smart Slider 3 Pro (aktiviert und installiert)
+1. Lade die Plugin-Dateien in das Verzeichnis `/wp-content/plugins/jetengine-smartslider-generator` hoch oder installiere das Plugin über den WordPress-Plugin-Bildschirm
+2. Aktiviere das Plugin über den 'Plugins'-Bildschirm in WordPress
+3. Gehe zu Smart Slider 3 > Slider erstellen > Dynamischer Slide, um den Generator zu nutzen
 
 ## Verwendung
 
-1. Gehe zu Smart Slider 3 Pro > Neu hinzufügen > Dynamic Slide
-2. Wähle "JetEngine CPT" als Generator
-3. Wähle einen deiner Custom Post Types aus der Liste
-4. Konfiguriere die Filteroptionen nach Bedarf
-5. Erstelle dein Slide-Design mit den verfügbaren dynamischen Variablen
+### Erstellen eines dynamischen Sliders mit JetEngine-Inhalten
 
-### Verfügbare Variablen
+1. Gehe zu Smart Slider 3 > Slider erstellen > Dynamischer Slide
+2. Wähle "JetEngine" aus der Generator-Liste
+3. Wähle die spezifische JetEngine-Quelle aus (Custom Post Type, Custom Content Type oder Relation)
+4. Konfiguriere die Filter-Einstellungen nach Bedarf:
+   - Filtere nach Taxonomien
+   - Setze Meta-Feld-Bedingungen
+   - Gib Sortieroptionen an
+   - Wähle Bildquellen
+5. Klicke auf "Slider erstellen", um deinen dynamischen Slider zu generieren
 
-Für jeden Post sind folgende dynamische Variablen verfügbar:
+### Verfügbare Quellen
 
-- Standardfelder: id, title, url, author_name, author_url, date, modified, content, excerpt, comment_count, comment_status
-- Bild-Felder: image, thumbnail, image_width, image_height, image_alt
-- Taxonomie-Felder: [taxonomy_name], [taxonomy_name]_slugs, [taxonomy_name]_urls, [taxonomy_name]_name, [taxonomy_name]_slug, [taxonomy_name]_url
-- Meta-Felder: meta_[field_name], meta_image_[field_name] (für Bild-IDs)
+#### Custom Post Types
+Generiere Slides aus jedem JetEngine oder WordPress Custom Post Type mit vollständigem Zugriff auf:
+- Post-Daten (Titel, Inhalt, Auszug, usw.)
+- Meta-Felder (alle JetEngine-Feldtypen werden unterstützt)
+- Taxonomie-Begriffe
+- Beitrags- und Galeriebilder
 
-## Filter und Sortierung
+#### Custom Content Types (CCT)
+Erstelle Slides aus JetEngine Custom Content Types mit Unterstützung für:
+- CCT-Elementdaten
+- Alle CCT-Meta-Felder
+- Galerie- und Medienfelder
 
-Das Plugin bietet folgende Filter- und Sortierungsoptionen:
+#### Relations
+Zeige verwandte Inhalte über JetEngine-Relations an:
+- Eltern-Kind-Beziehungen
+- Hole Kinder für ein Elternelement oder Eltern für ein Kindelement
+- Filtere und sortiere verwandte Elemente
 
-### Filter
-- Post-Status (Veröffentlicht, Entwurf, Ausstehend, Privat, Geplant)
-- Taxonomie-Filter (für alle mit dem Custom Post Type verbundenen Taxonomien)
-- Meta-Feld-Filter (mit umfangreichen Vergleichsoperatoren)
-- Passwortgeschützte Posts ein-/ausschließen
+### Verwenden von JetEngine-Meta-Feldern
 
-### Sortierung
-- Nach Standardfeldern (ID, Autor, Titel, Datum, etc.)
-- Nach Meta-Feldern (alphabetisch oder numerisch)
-- Aufsteigend oder absteigend
+Diese Integration bietet spezielle Unterstützung für JetEngine's Meta-Feldtypen:
 
-## Entwickler-Informationen
+- **Galerie-Felder**: Greife auf alle Bilder in der Galerie zu, wobei das erste Bild als Hauptbild des Slides dient
+- **Repeater-Felder**: Greife auf Repeater-Felddaten als formatierte Arrays zu
+- **Datums- und Zeitfelder**: Korrekt formatierte Daten mit verschiedenen Ausgabeoptionen
+- **Medienfelder**: Automatisch in nutzbare Bild-URLs umgewandelt
+- **Maps**: Extrahierte und formatierte Koordinaten für die Anzeige
+- **Icon Picker**: Direkter Zugriff auf Icon-Daten
 
-Das Plugin wurde entwickelt von Joseph Kisler - Webwerkstatt. 
+## Erweiterte Verwendung
 
-### Debug-Modus
+### Bildquellen
 
-Wenn `WP_DEBUG` aktiviert ist, protokolliert das Plugin Informationen über die Registrierung und Verwendung des Generators. Diese Informationen können bei der Fehlerbehebung hilfreich sein.
+Für jeden Slide kannst du aus diesen Bildquellen wählen:
 
-## Fehlersuche
+- **Beitragsbild**: Verwendet das Beitragsbild des Posts (für CPTs)
+- **Meta-Feld**: Verwendet ein bestimmtes Meta-Feld als Bildquelle
+- **JetEngine-Galerie**: Verwendet ein JetEngine-Galeriefeld, wobei das erste Bild als Hauptbild und andere als Variablen zugänglich sind
+- **Inhaltsbilder**: Extrahiert Bilder aus dem Post-Inhalt
+- **Erstes Bild aus Inhalt**: Holt nur das erste Bild aus dem Inhalt
 
-Wenn der Generator nicht in der Smart Slider 3 Pro Benutzeroberfläche erscheint:
+### Meta-Feld-Filterung
 
-1. Stelle sicher, dass sowohl JetEngine als auch Smart Slider 3 Pro aktiviert sind
-2. Deaktiviere und reaktiviere das Plugin
-3. Leere den WordPress-Cache und den Browser-Cache
-4. Überprüfe die PHP-Fehlerprotokolle auf mögliche Fehlermeldungen
+Filtere deine Inhalte nach Meta-Feldwerten mit diesen Vergleichsoperatoren:
+- Gleich (=)
+- Ungleich (!=)
+- Größer als (>)
+- Größer oder gleich (>=)
+- Kleiner als (<)
+- Kleiner oder gleich (<=)
+- Enthält (LIKE)
+- Enthält nicht (NOT LIKE)
+- In Liste (IN)
+- Nicht in Liste (NOT IN)
+- Zwischen Werten (BETWEEN)
+- Nicht zwischen Werten (NOT BETWEEN)
+- Existiert
+- Existiert nicht
 
-## Changelog
+## Variablen in Slides
 
-### Version 2.3
-- Verbesserte Cache-Leeren-Funktion
-- Kompatibilität mit verschiedenen Smart Slider 3-Versionen
-- Hinzufügen von Debug-Informationen
+Beim Erstellen deiner Slide-Vorlage hast du Zugriff auf zahlreiche Variablen, abhängig von der Quelle:
 
-### Version 2.2
-- Unterstützung für Taxonomie-Filter
-- Erweiterte Meta-Feld-Vergleichsoperatoren
+### Allgemeine Variablen
+- `id` - Element-ID
+- `title` - Elementtitel
+- `url` - Element-URL
+- `date` - Erstellungsdatum
+- `modified` - Änderungsdatum
+- `image` - Haupt-Bild-URL
+- `thumbnail` - Thumbnail-Bild-URL
 
-### Version 2.1
-- Unterstützung für Meta-Feld-Bilder
-- Verbesserter Daten-Export
+### Custom Post Type spezifisch
+- `content` - Post-Inhalt
+- `excerpt` - Post-Auszug
+- `author_name` - Autorname
+- `author_url` - Autor-Archiv-URL
+- `comment_count` - Anzahl der Kommentare
+- `[taxonomy]` - Taxonomie-Begriffe durch Komma getrennt
+- `[taxonomy]_slugs` - Taxonomie-Begriff-Slugs
+- `[taxonomy]_urls` - Taxonomie-Begriff-URLs
 
-### Version 2.0
-- Initiale öffentliche Version
+### Meta-Feld-Variablen
+- `meta_[field_name]` - Roher Meta-Feldwert
+- `meta_[field_name]_formatted` - Formatierter Meta-Feldwert
+- Zusätzliche spezialisierte Variablen je nach Feldtyp
+
+## Support
+
+Wenn du Probleme hast oder Fragen zum Plugin hast, kontaktiere bitte unser Support-Team.
 
 ## Lizenz
 
-Dieses Plugin ist unter der GPLv2 oder späteren Version lizenziert.
+Dieses Plugin ist unter der GPL v2 oder höher lizenziert.
 
 ---
 
-Bei Fragen oder Problemen kontaktieren Sie bitte den Support.
+### Credits
+
+- Entwickelt von [Dein Name/Unternehmen]
+- Erstellt für JetEngine von Crocoblock und Smart Slider 3 Pro von Nextend
