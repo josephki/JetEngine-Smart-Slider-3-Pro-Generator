@@ -1,248 +1,381 @@
 <?php
 /**
- * Plugin Name: JetEngine Smart Slider 3 Pro Generator
- * Description: Generator für Smart Slider 3 Pro, der JetEngine CPTs unterstützt
- * Version: 2.3
+ * Plugin Name: JetEngine Advanced Smart Slider 3 Generator
+ * Description: Advanced integration between JetEngine and Smart Slider 3 Pro with support for CPTs, meta fields, taxonomies, and relations
+ * Version: 1.1.0
  * Author: Joseph Kisler - Webwerkstatt
+ * Text Domain: jetengine-smartslider
  */
 
-// Direkten Zugriff verhindern
+// Prevent direct access
 if (!defined('ABSPATH')) exit;
 
-// Debug-Protokoll-Funktion
-function jetengine_ss3_debug_log($message) {
-    // Debug in die Admin-Hinweise ausgeben
-    if (defined('WP_DEBUG') && WP_DEBUG === true) {
-        add_action('admin_notices', function() use ($message) {
-            echo '<div class="notice notice-info"><p>JetEngine SS3 Debug: ' . esc_html($message) . '</p></div>';
-        });
+/**
+ * Main plugin class
+ */
+class JetEngine_SmartSlider_Generator {
+
+    /**
+     * Plugin directory path
+     */
+    public $plugin_path;
+
+    /**
+     * Plugin directory URL
+     */
+    public $plugin_url;
+
+    /**
+     * Base asset URL for icons and resources
+     */
+    public $asset_url;
+
+    /**
+     * Instance of the plugin
+     */
+    private static $instance = null;
+
+    /**
+     * Holds debug mode state
+     */
+    private $debug_mode = false;
+
+    /**
+     * Initialize the plugin
+     */
+    public function __construct() {
+        $this->plugin_path = plugin_dir_path(__FILE__);
+        $this->plugin_url = plugin_dir_url(__FILE__);
+        $this->asset_url = $this->plugin_url . 'assets/';
+
+        // Check if debug mode is enabled
+        $this->debug_mode = defined('WP_DEBUG') && WP_DEBUG === true;
+
+        $this->register_hooks();
+    }
+
+    /**
+     * Register plugin hooks
+     */
+    public function register_hooks() {
+        // Load compatibility class first
+        add_action('plugins_loaded', [$this, 'load_compatibility'], 5);
         
-        // Zusätzlich in die Fehlerprotokoll-Datei schreiben
-        error_log('JetEngine SS3 Debug: ' . $message);
+        // Load plugin files
+        add_action('plugins_loaded', [$this, 'load_dependencies'], 10);
+
+        // Initialize Smart Slider 3 generator
+        add_action('init', [$this, 'initialize_generator'], 20);
+
+        // Add plugin action links
+        add_filter('plugin_action_links_' . plugin_basename(__FILE__), [$this, 'add_plugin_action_links']);
+
+        // Register assets
+        add_action('admin_enqueue_scripts', [$this, 'register_admin_assets']);
+        
+        // Admin notice for compatibility issues
+        add_action('admin_notices', [$this, 'show_compatibility_notices']);
+    }
+    
+    /**
+     * Load compatibility class first
+     */
+    public function load_compatibility() {
+        // Load compatibility helper
+        require_once $this->plugin_path . 'includes/compatibility.php';
+    }
+
+    /**
+     * Load plugin dependencies
+     */
+    public function load_dependencies() {
+        // Check if compatibility class is loaded
+        if (!function_exists('jetengine_smartslider_compatibility')) {
+            $this->log('Compatibility class not loaded');
+            return;
+        }
+        
+        // Get compatibility status
+        $compatibility = jetengine_smartslider_compatibility();
+        $check_result = $compatibility->check_installation();
+        
+        // Wenn keine erfolgreiche Prüfung, zeige nur Warnungen an, lade aber nichts weiter
+        if (!$check_result['success']) {
+            $this->log('Smart Slider compatibility check failed: ' . $check_result['message']);
+            return;
+        }
+        
+        // Check if JetEngine is active
+        if (!class_exists('Jet_Engine')) {
+            $this->log('JetEngine is not active');
+            return;
+        }
+
+        // Load classes
+        require_once $this->plugin_path . 'includes/helper.php';
+        require_once $this->plugin_path . 'includes/generator-sources.php';
+        require_once $this->plugin_path . 'includes/generator-group.php';
+        
+        $this->log('Plugin dependencies loaded successfully');
+    }
+
+    /**
+     * Initialize the generator
+     */
+    public function initialize_generator() {
+        // Prüfe, ob Kompatibilitätsklasse geladen ist
+        if (!function_exists('jetengine_smartslider_compatibility')) {
+            return;
+        }
+        
+        // Prüfe, ob Smart Slider 3 Pro kompatibel ist
+        $compatibility = jetengine_smartslider_compatibility();
+        if (!$compatibility->is_compatible()) {
+            return;
+        }
+        
+        // Prüfe, ob die notwendigen Klassen existieren
+        $generator_factory_class = $compatibility->get_generator_factory_class();
+        
+        if (!class_exists($generator_factory_class) || !class_exists('JetEngine_SmartSlider_Generator_Group')) {
+            $this->log('Required generator classes not found');
+            return;
+        }
+
+        // Hookpoint for Smart Slider 3 to register new generators
+        add_action('smartslider3_generator_init', [$this, 'register_generator']);
+
+        $this->log('JetEngine SmartSlider Generator initialized');
+    }
+
+    /**
+     * Register the generator with Smart Slider 3
+     */
+    public function register_generator() {
+        try {
+            // Hole kompatible Factory-Klasse
+            $factory_class = jetengine_smartslider_compatibility()->get_generator_factory_class();
+            
+            if (class_exists($factory_class) && method_exists($factory_class, 'getInstance')) {
+                $factory = call_user_func([$factory_class, 'getInstance']);
+                
+                // Create new instance of the generator group
+                $jetengine_generator = new JetEngine_SmartSlider_Generator_Group();
+                
+                // Register with the factory
+                if (method_exists($factory, 'addGenerator')) {
+                    $factory->addGenerator($jetengine_generator);
+                    $this->log('JetEngine Generator registered with Smart Slider 3');
+                } else {
+                    $this->log('addGenerator method not found in factory class');
+                }
+            } else {
+                $this->log('Smart Slider 3 generator factory not available');
+            }
+        } catch (Exception $e) {
+            $this->log('Error registering generator: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Register admin assets
+     */
+    public function register_admin_assets($hook) {
+        // Only load assets on Smart Slider pages
+        if (strpos($hook, 'smart-slider') === false) {
+            return;
+        }
+
+        // Register and enqueue styles
+        wp_register_style(
+            'jetengine-smartslider',
+            $this->asset_url . 'css/admin.css',
+            [],
+            '1.0.0'
+        );
+        wp_enqueue_style('jetengine-smartslider');
+
+        // Register and enqueue scripts
+        wp_register_script(
+            'jetengine-smartslider',
+            $this->asset_url . 'js/admin.js',
+            ['jquery'],
+            '1.0.0',
+            true
+        );
+        
+        // Lokalisiere das Script mit Übersetzungen und Nonce
+        wp_localize_script('jetengine-smartslider', 'jetengineSmartSliderData', [
+            'nonce' => wp_create_nonce('jetengine_smartslider_nonce'),
+            'select_field' => __('Feld auswählen', 'jetengine-smartslider'),
+            'select_meta_key' => __('Meta-Key auswählen', 'jetengine-smartslider'),
+            'select_taxonomies' => __('Taxonomien auswählen', 'jetengine-smartslider'),
+            'meta_field_tip' => __('Geben Sie den Namen des JetEngine-Meta-Felds ein, nach dem gefiltert werden soll.', 'jetengine-smartslider'),
+            'image_field_tip' => __('Wählen Sie das Feld, das das Bild oder die Galerie enthält.', 'jetengine-smartslider')
+        ]);
+        
+        wp_enqueue_script('jetengine-smartslider');
+    }
+
+    /**
+     * Add plugin action links
+     * 
+     * @param array $links Existing action links
+     * @return array Modified action links
+     */
+    public function add_plugin_action_links($links) {
+        $plugin_links = [
+            '<a href="' . admin_url('admin.php?page=smart-slider3') . '">' . __('Smart Slider', 'jetengine-smartslider') . '</a>',
+            '<a href="' . admin_url('admin.php?page=jet-engine') . '">' . __('JetEngine', 'jetengine-smartslider') . '</a>',
+        ];
+        
+        return array_merge($plugin_links, $links);
+    }
+    
+    /**
+     * Show compatibility notices
+     */
+    public function show_compatibility_notices() {
+        // Prüfen, ob die Kompatibilitätsklasse geladen ist
+        if (!function_exists('jetengine_smartslider_compatibility')) {
+            echo '<div class="notice notice-error">';
+            echo '<p><strong>JetEngine Advanced Smart Slider Generator:</strong> ' . 
+                 esc_html__('Kompatibilitätsmodul konnte nicht geladen werden.', 'jetengine-smartslider') . 
+                 '</p>';
+            echo '</div>';
+            return;
+        }
+        
+        // Prüfe, ob wir auf der Plugin-Seite sind
+        $screen = get_current_screen();
+        if (!$screen || ($screen->base !== 'plugins' && $screen->base !== 'toplevel_page_jet-engine' && $screen->base !== 'toplevel_page_smart-slider3')) {
+            return;
+        }
+        
+        // Hole die Kompatibilitätsprüfung
+        $check_result = jetengine_smartslider_compatibility()->check_installation();
+        
+        if (!$check_result['success']) {
+            // Zeige Smart Slider-spezifischen Fehler
+            echo '<div class="notice notice-error">';
+            echo '<p><strong>JetEngine Advanced Smart Slider Generator:</strong> ' . esc_html($check_result['message']) . '</p>';
+            
+            if (!empty($check_result['details'])) {
+                echo '<ul>';
+                foreach ($check_result['details'] as $detail) {
+                    echo '<li>' . esc_html($detail) . '</li>';
+                }
+                echo '</ul>';
+            }
+            
+            echo '</div>';
+            return;
+        }
+        
+        // Prüfe, ob JetEngine aktiv ist
+        if (!class_exists('Jet_Engine')) {
+            echo '<div class="notice notice-error">';
+            echo '<p><strong>JetEngine Advanced Smart Slider Generator:</strong> ' . 
+                 esc_html__('JetEngine muss installiert und aktiviert sein, um dieses Plugin zu verwenden.', 'jetengine-smartslider') . 
+                 '</p>';
+            echo '</div>';
+            return;
+        }
+    }
+
+    /**
+     * Log debug information
+     * 
+     * @param string $message Message to log
+     */
+    public function log($message) {
+        if ($this->debug_mode) {
+            if (is_array($message) || is_object($message)) {
+                error_log('JetEngine SmartSlider Debug: ' . print_r($message, true));
+            } else {
+                error_log('JetEngine SmartSlider Debug: ' . $message);
+            }
+        }
+    }
+
+    /**
+     * Get plugin instance
+     * 
+     * @return JetEngine_SmartSlider_Generator Plugin instance
+     */
+    public static function instance() {
+        if (is_null(self::$instance)) {
+            self::$instance = new self();
+        }
+        
+        return self::$instance;
     }
 }
 
-// Nachträgliche Aktivierung des Plugins
+/**
+ * Initialize the plugin
+ */
+function jetengine_smartslider_generator() {
+    return JetEngine_SmartSlider_Generator::instance();
+}
+
+/**
+ * Start the plugin
+ */
+jetengine_smartslider_generator();
+
+/**
+ * Helper function to initialize Smart Slider 3 generator
+ */
+function jetengine_smartslider_generator_init() {
+    if (function_exists('jetengine_smartslider_generator')) {
+        jetengine_smartslider_generator()->initialize_generator();
+    }
+}
+
+/**
+ * Create required directories on plugin activation
+ */
 register_activation_hook(__FILE__, function() {
-    jetengine_ss3_debug_log('Plugin aktiviert');
-});
-
-// Erst später initialisieren, um sicherzustellen, dass alle Smart Slider Klassen geladen sind
-add_action('init', function() {
-    // Prüfen, ob die benötigten Klassen vorhanden sind
-    if (!class_exists('Nextend\SmartSlider3\Generator\AbstractGeneratorGroup')) {
-        jetengine_ss3_debug_log('Smart Slider Generator-Klassen noch nicht verfügbar');
-        return;
+    // Create assets directory if it doesn't exist
+    $assets_dir = plugin_dir_path(__FILE__) . 'assets';
+    if (!file_exists($assets_dir)) {
+        mkdir($assets_dir, 0755, true);
     }
     
-    jetengine_ss3_debug_log('Smart Slider Generator-Klassen gefunden, lade Generator...');
-    
-    // Generator-Klassen laden
-    require_once(plugin_dir_path(__FILE__) . 'class-jetengine-generator.php');
-    
-    // Generator direkt bei der Factory registrieren
-    try {
-        if (class_exists('Nextend\SmartSlider3\Generator\GeneratorFactory')) {
-            $factory = \Nextend\SmartSlider3\Generator\GeneratorFactory::getInstance();
-            
-            // Neue Instanz des Generators erstellen
-            $jetengine_generator = new JetEngineGeneratorGroup();
-            
-            // Bei der Factory registrieren
-            $factory->addGenerator($jetengine_generator);
-            
-            jetengine_ss3_debug_log('JetEngine Generator direkt bei der Factory registriert');
-        }
-    } catch (Exception $e) {
-        jetengine_ss3_debug_log('Fehler bei der Registrierung: ' . $e->getMessage());
+    // Create assets/css directory if it doesn't exist
+    $css_dir = $assets_dir . '/css';
+    if (!file_exists($css_dir)) {
+        mkdir($css_dir, 0755, true);
     }
-}, 50); // Mittlere Priorität
-
-// Spätes Laden für den Admin-Bereich
-add_action('admin_init', function() {
-    // Prüfen, ob wir uns auf einer Smart Slider Seite befinden
-    $is_smartslider_page = isset($_GET['page']) && ($_GET['page'] === 'smart-slider3' || strpos($_GET['page'], 'nextend-smart-slider') !== false);
     
-    if ($is_smartslider_page && class_exists('Nextend\SmartSlider3\Generator\GeneratorFactory')) {
-        jetengine_ss3_debug_log('Smart Slider Admin-Seite erkannt');
-        
-        try {
-            // Prüfen, ob der Generator bereits registriert ist
-            $factory = \Nextend\SmartSlider3\Generator\GeneratorFactory::getInstance();
-            $reflection = new ReflectionClass($factory);
-            
-            if ($reflection->hasProperty('generators')) {
-                $generators_prop = $reflection->getProperty('generators');
-                $generators_prop->setAccessible(true);
-                $generators = $generators_prop->getValue($factory);
-                
-                // Ist unser Generator bereits registriert?
-                if (isset($generators['jetengine'])) {
-                    jetengine_ss3_debug_log('JetEngine Generator bereits registriert');
-                } else {
-                    jetengine_ss3_debug_log('JetEngine Generator noch nicht registriert, registriere jetzt...');
-                    
-                    // Generator-Klassen laden, falls noch nicht geschehen
-                    if (!class_exists('JetEngineGeneratorGroup')) {
-                        require_once(plugin_dir_path(__FILE__) . 'class-jetengine-generator.php');
-                    }
-                    
-                    // Neue Instanz des Generators erstellen und registrieren
-                    $jetengine_generator = new JetEngineGeneratorGroup();
-                    $factory->addGenerator($jetengine_generator);
-                    
-                    jetengine_ss3_debug_log('JetEngine Generator auf Admin-Seite registriert');
-                }
-            }
-            
-            // Vorsichtig versuchen, den Cache zu leeren
-            try {
-                // Version 1: ApplicationTypeFrontend::clearCache()
-                if (class_exists('Nextend\SmartSlider3\Application\Frontend\ApplicationTypeFrontend')) {
-                    if (method_exists('Nextend\SmartSlider3\Application\Frontend\ApplicationTypeFrontend', 'clearCache')) {
-                        \Nextend\SmartSlider3\Application\Frontend\ApplicationTypeFrontend::clearCache();
-                        jetengine_ss3_debug_log('Cache über ApplicationTypeFrontend geleert');
-                    }
-                }
-                
-                // Version 2: SmartSlider3Platform::clearCache()
-                if (class_exists('Nextend\SmartSlider3\Platform\WordPress\SmartSlider3Platform')) {
-                    if (method_exists('Nextend\SmartSlider3\Platform\WordPress\SmartSlider3Platform', 'clearCache')) {
-                        \Nextend\SmartSlider3\Platform\WordPress\SmartSlider3Platform::clearCache();
-                        jetengine_ss3_debug_log('Cache über SmartSlider3Platform geleert');
-                    }
-                }
-                
-                // Alternatives Cache-Leeren via Admin-URL
-                global $wpdb;
-                $table_prefix = $wpdb->prefix;
-                
-                // Cache-Tabellen-Ansätze
-                $cache_tables = [
-                    $table_prefix . 'nextend2_section_storage',
-                    $table_prefix . 'nextend2_smartslider3_generators_cache',
-                ];
-                
-                foreach ($cache_tables as $table) {
-                    if ($wpdb->get_var("SHOW TABLES LIKE '$table'") == $table) {
-                        $wpdb->query("DELETE FROM $table WHERE `application` LIKE '%smartslider%' AND `section` LIKE '%cache%'");
-                        jetengine_ss3_debug_log('Cache aus DB-Tabelle ' . $table . ' geleert');
-                    }
-                }
-                
-                // Browser-Cache-Kontrolle für diese Seite deaktivieren
-                header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-                header("Pragma: no-cache");
-                header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
-            } catch (Exception $e) {
-                jetengine_ss3_debug_log('Cache leeren fehlgeschlagen: ' . $e->getMessage());
-            }
-        } catch (Exception $e) {
-            jetengine_ss3_debug_log('Fehler auf Admin-Seite: ' . $e->getMessage());
-        }
+    // Create assets/js directory if it doesn't exist
+    $js_dir = $assets_dir . '/js';
+    if (!file_exists($js_dir)) {
+        mkdir($js_dir, 0755, true);
     }
-}, 999); // Sehr späte Priorität
-
-// Struktur eines bestehenden Generators anzeigen
-add_action('admin_footer', function() {
-    if (isset($_GET['page']) && strpos($_GET['page'], 'smart-slider') !== false && 
-        isset($_GET['ss3analyzer']) && $_GET['ss3analyzer'] == '1') {
-        
-        if (class_exists('Nextend\SmartSlider3\Generator\GeneratorFactory')) {
-            try {
-                $factory = \Nextend\SmartSlider3\Generator\GeneratorFactory::getInstance();
-                $reflection = new ReflectionClass($factory);
-                
-                if ($reflection->hasProperty('generators')) {
-                    $generators_prop = $reflection->getProperty('generators');
-                    $generators_prop->setAccessible(true);
-                    $generators = $generators_prop->getValue($factory);
-                    
-                    echo '<div style="background: #fff; padding: 20px; margin: 20px; border: 1px solid #ccc;">';
-                    echo '<h3>Generator-Analyse:</h3>';
-                    
-                    // Registrierte Generatoren auflisten
-                    echo '<h4>Registrierte Generatoren:</h4>';
-                    echo '<ul>';
-                    foreach ($generators as $key => $generator) {
-                        echo '<li>' . esc_html($key) . ' (Klasse: ' . get_class($generator) . ')</li>';
-                    }
-                    echo '</ul>';
-                    
-                    // Posts Generator analysieren
-                    if (isset($generators['posts'])) {
-                        $posts_generator = $generators['posts'];
-                        echo '<h4>Posts Generator Struktur:</h4>';
-                        echo '<pre>';
-                        $vars = get_object_vars($posts_generator);
-                        foreach ($vars as $prop => $value) {
-                            echo esc_html($prop) . ': ';
-                            if (is_scalar($value)) {
-                                echo esc_html(var_export($value, true));
-                            } else {
-                                echo gettype($value);
-                            }
-                            echo "\n";
-                        }
-                        
-                        echo '</pre>';
-                    }
-                    
-                    // Unser Generator
-                    if (isset($generators['jetengine'])) {
-                        $our_generator = $generators['jetengine'];
-                        echo '<h4>JetEngine Generator Struktur:</h4>';
-                        echo '<pre>';
-                        $vars = get_object_vars($our_generator);
-                        foreach ($vars as $prop => $value) {
-                            echo esc_html($prop) . ': ';
-                            if (is_scalar($value)) {
-                                echo esc_html(var_export($value, true));
-                            } else {
-                                echo gettype($value);
-                            }
-                            echo "\n";
-                        }
-                        echo '</pre>';
-                    }
-                    
-                    echo '</div>';
-                }
-            } catch (Exception $e) {
-                echo '<div style="background: #fff; padding: 20px; margin: 20px; border: 1px solid #f00;">';
-                echo '<h3>Fehler bei Generator-Analyse:</h3>';
-                echo '<pre>' . esc_html($e->getMessage()) . '</pre>';
-                echo '</div>';
-            }
-        }
+    
+    // Create assets/images directory if it doesn't exist
+    $images_dir = $assets_dir . '/images';
+    if (!file_exists($images_dir)) {
+        mkdir($images_dir, 0755, true);
     }
-});
+    
+    // Create includes directory if it doesn't exist
+    $includes_dir = plugin_dir_path(__FILE__) . 'includes';
+    if (!file_exists($includes_dir)) {
+        mkdir($includes_dir, 0755, true);
+    }
 
-// Versuche, den Generator direkt im Frontend zu registrieren
-add_action('admin_footer', function() {
-    if (isset($_GET['page']) && strpos($_GET['page'], 'smart-slider') !== false) {
-        echo '<script type="text/javascript">
-        document.addEventListener("DOMContentLoaded", function() {
-            // Warte auf das JavaScript-Framework von Smart Slider
-            var checkExistence = setInterval(function() {
-                if (window.N2Classes && window.N2Classes.Form && window.N2Classes.Form.Element && window.N2Classes.Form.Element.GeneratorPicker) {
-                    clearInterval(checkExistence);
-                    console.log("Smart Slider JS-Framework gefunden, registriere JetEngine Generator...");
-                    
-                    // Original-Methode überschreiben
-                    var originalGetGenerators = window.N2Classes.Form.Element.GeneratorPicker.prototype.getGenerators;
-                    window.N2Classes.Form.Element.GeneratorPicker.prototype.getGenerators = function() {
-                        var generators = originalGetGenerators.apply(this, arguments);
-                        if (generators && !generators.jetengine) {
-                            console.log("JetEngine zu Generator-Liste hinzufügen");
-                            generators.jetengine = {"title": "JetEngine CPT"};
-                        }
-                        console.log("Verfügbare Generatoren:", Object.keys(generators));
-                        return generators;
-                    };
-                }
-            }, 500);
-        });
-        </script>';
+    // Create basic CSS file
+    $css_file = $css_dir . '/admin.css';
+    if (!file_exists($css_file)) {
+        file_put_contents($css_file, "/* JetEngine SmartSlider Admin Styles */\n.jetengine-smartslider-icon {\n    width: 24px;\n    height: 24px;\n}");
+    }
+    
+    // Create basic JS file
+    $js_file = $js_dir . '/admin.js';
+    if (!file_exists($js_file)) {
+        file_put_contents($js_file, "/* JetEngine SmartSlider Admin Scripts */\njQuery(document).ready(function($) {\n    console.log('JetEngine SmartSlider Generator loaded');\n});");
     }
 });
